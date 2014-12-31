@@ -8,6 +8,15 @@ Puppet::Type.newtype(:mysql_user) do
 
   newparam(:name, :namevar => true) do
     desc "The name of the user. This uses the 'username@hostname' or username@hostname."
+    munge do |value|
+      if value.split('@')[0] =~ /^('|"){0}(\w+-){1,}\w+('|"){0}$/
+        name_split = name.split('@')
+        value = "'#{name_split[0]}'@#{name_split[1].downcase}"
+      end
+      matches = /^((['`"]?).*\2)@([\w%\.:\-]+)/.match(value)
+      "#{matches[1]}@#{matches[3].downcase}"
+    end
+
     validate do |value|
       # http://dev.mysql.com/doc/refman/5.5/en/identifiers.html
       # If at least one special char is used, string must be quoted
@@ -29,10 +38,7 @@ Puppet::Type.newtype(:mysql_user) do
       raise(ArgumentError, 'MySQL usernames are limited to a maximum of 16 characters') if user_part.size > 16
     end
 
-    munge do |value|
-      matches = /^((['`"]?).*\2)@([\w%\.:\-]+)/.match(value)
-      "#{matches[1]}@#{matches[3].downcase}"
-    end
+
   end
 
   newproperty(:password_hash) do
